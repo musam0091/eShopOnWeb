@@ -1,0 +1,74 @@
+# Starter pipeline
+# Start with a minimal pipeline that you can customize to build and deploy your code.
+# Add steps that build, run tests, deploy, and more:
+# https://aka.ms/yaml
+
+# Starter pipeline
+# Start with a minimal pipeline that you can customize to build and deploy your code.
+# Add steps that build, run tests, deploy, and more:
+# https://aka.ms/yaml
+
+#trigger:
+#- main
+
+resources:
+ repositories:
+   - repository: self
+     trigger: none
+
+stages:
+  - stage: Build
+    displayName: build dotnet solution
+    jobs:
+      - job: Build
+        pool: 
+          vmImage: ubuntu-latest
+        steps:
+           - task: DotNetCoreCLI@2
+             displayName: Restore
+             inputs:
+              command: 'restore'
+              projects: '**/*.sln'
+              feedsToUse: 'select'
+           - task: DotNetCoreCLI@2
+             displayName: Build
+             inputs:
+               command: 'test'
+               projects: '**/*.sln'
+           - task: DotNetCoreCLI@2
+             displayName: Test
+             inputs:
+               command: 'test'
+               projects: 'tests/UnitTests/*.csproj'
+           - task: DotNetCoreCLI@2
+             displayName: Publish
+             inputs:
+               command: 'publish'
+               publishWebProjects: true
+               arguments: '-o $(Build.ArtifactStagingDirectory)'
+           - task: PublishBuildArtifacts@1
+             displayName: Publish artifacts
+             inputs:
+               PathtoPublish: '$(Build.ArtifactStagingDirectory)'
+               ArtifactName: Website
+  - stage: Deploy
+    displayName: Deploy to Azure webapp
+    jobs:
+      - job: Deploy
+        pool:
+         name: 'windows-2019'
+        steps:
+          - task: DownloadBuildArtifacts@0
+            inputs:
+              buildType: 'current'
+              downloadType: 'single'
+              artifactName: 'Website'
+              downloadPath: '$(Build.ArtifactStagingDirectory)'
+          
+          - task: AzureRmWebAppDeployment@4
+            inputs:
+             ConnectionType: 'AzureRM'
+             azureSubscription: 'Azure subscription 1 (881994a7-d874-4c41-8fd0-baeddb7f12b7)'
+             appType: 'webApp'
+             WebAppName: 'Newitweb'
+             packageForLinux: '$(System.DefaultWorkingDirectory)/**/*.zip'
